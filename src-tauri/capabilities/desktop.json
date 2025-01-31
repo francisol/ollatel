@@ -1,0 +1,12 @@
+{
+  "identifier": "desktop-capability",
+  "platforms": [
+    "windows"
+  ],
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "autostart:default"
+  ]
+}
