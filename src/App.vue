@@ -2,6 +2,8 @@
 <template>
     <n-scrollbar style="max-height: 100%">
   <n-config-provider>
+    <n-dialog-provider>
+      <n-message-provider>
     <div class="content">
     <n-notification-provider>
     <n-layout>
@@ -15,6 +17,8 @@
     </n-layout>
     </n-notification-provider>
   </div>
+  </n-message-provider>
+    </n-dialog-provider>
   </n-config-provider>
   
   </n-scrollbar>

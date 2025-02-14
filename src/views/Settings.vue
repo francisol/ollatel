@@ -23,6 +23,12 @@
               </template>
               <n-switch v-model:value="settings.autoRunOllama" />
             </n-form-item>
+            <n-form-item label-placement="left">
+              <template #label>
+                <span>启动时更新 Ollama</span>
+              </template>
+              <n-switch v-model:value="settings.autoUpdateOllama" />
+            </n-form-item>
           </n-card>
           <!-- 基本设置组 -->
           <n-card title="基本设置" embedded>
@@ -185,6 +191,29 @@
               </n-input-group>
             </n-form-item>
           </n-card>
+
+          
+          <!-- 用户自定义设置 -->
+          <n-card title="用户自定义设置" embedded>
+            <n-form-item>
+              <template #label>
+                自定义环境变量
+              </template>
+              <n-input
+      type="textarea"
+      placeholder="格式为KEY=VALUE,以换行分割，例如&#10K=v&#10K2=V2"
+    />            </n-form-item>
+            <n-form-item>
+              <template #label>
+                自定义启动时参数
+              </template>
+              <n-input
+      type="textarea"
+      placeholder="自定义启动时参数，使用换行分割例如:&#10set parameter num_ctx 4096&#10set ..."
+    /> 
+            </n-form-item>
+          </n-card>
+
         </n-space>
 
         <n-space justify="end" style="margin-top: 24px">
@@ -213,6 +242,7 @@ const formRef = ref(null)
 const defSettings={
   autoStart: false,
   autoRunOllama: true,
+  autoUpdateOllama: false,
   debug: false,
   host: '127.0.0.1:11434',
   keepAlive: '5',
