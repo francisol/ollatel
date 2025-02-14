@@ -121,6 +121,13 @@
           <n-card title="高级设置" embedded>
             <n-form-item>
               <template #label>
+                GPU设备选择
+                <n-tag type="info" size="small" class="env-tag">ONEAPI_DEVICE_SELECTOR</n-tag>
+              </template>
+              <n-input v-model:value="settings.deviceSelector" placeholder="level_zero:0, level_zero:1..." />
+            </n-form-item>
+            <n-form-item>
+              <template #label>
                 禁用模型清理
                 <n-tag type="info" size="small" class="env-tag">OLLAMA_NOPRUNE</n-tag>
               </template>
@@ -222,7 +229,8 @@ const defSettings={
   llmLibrary: '',
   gpuOverhead: null,
   loadTimeout: '5',
-  loadTimeoutUnit: 'm'
+  loadTimeoutUnit: 'm',
+  deviceSelector:''
 }
 const settings = ref(defSettings)
 
@@ -329,6 +337,7 @@ onMounted(() => {
 
 async function saveEvn() {
   const envSettings = {
+    ONEAPI_DEVICE_SELECTOR: settings.value.deviceSelector|| '',
     OLLAMA_DEBUG: settings.value.debug ? '1' : '0',
     OLLAMA_HOST: settings.value.host,
     OLLAMA_KEEP_ALIVE: settings.value.keepAlive ? `${settings.value.keepAlive}${settings.value.keepAliveUnit}` : '',

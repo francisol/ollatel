@@ -1,6 +1,9 @@
 # Ollama for Intel
 Rust + Tauri + Vue + NaiveUI
 
+> [!NOTE]  
+> 作者要肝论文项目更新可能会慢一点
+
 ## 工具简介
 olltel 封装了Intel官方提供的AI推理工具包，并将其与Ollama服务相结合。通过图形化界面，用户可以轻松完成从环境配置到模型部署的整个流程。目前该工具仅支持多种Intel Arc显卡架构（不包括B系列）。
 ## 安装
