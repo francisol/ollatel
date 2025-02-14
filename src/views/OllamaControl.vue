@@ -11,6 +11,11 @@
           <n-button :type="ollamaRunning ? 'error' : 'primary'" :loading="isLoading" @click="toggleOllama">
             {{ ollamaRunning ? '停止 Ollama' : '启动 Ollama' }}
           </n-button>
+
+          <n-button type="info" @click="tryUpdate">
+            更新 Ollama
+          </n-button>
+
           <n-button type="info" @click="openCmd">
             打开 CMD
           </n-button>
@@ -38,16 +43,56 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from '@tauri-apps/api/event'
 import { loadSettings } from '../store';
-import {useOllamaStore} from "../stores/ollama";
-import { useNotification } from 'naive-ui'
+import { useOllamaStore } from "../stores/ollama";
+import { useNotification, useDialog,useMessage  } from 'naive-ui'
+const dialog = useDialog()
 const notification = useNotification();
-const ollamaStore=useOllamaStore();
+const ollamaStore = useOllamaStore();
 const ollamaRunning = ref(false)
 const isLoading = ref(false)
 const out = listen("run-ollama-output", (ev) => { ollamaStore.appendLog(ev.payload) });
 const err = listen("run-ollama-error", (ev) => ollamaStore.appendLog(ev.payload));
-let statusCheckInterval
+const message = useMessage()
 
+async function stopOllama() {
+
+}
+
+async function tryUpdate() {
+  if (ollamaRunning.value) {
+    dialog.warning({
+      title: '警告',
+      content: '服务正在运行，升级时请关闭服务',
+      positiveText: '升级并关闭服务',
+      negativeText: '稍后升级',
+      draggable: true,
+      onPositiveClick: async () => {
+        await toggleOllama()
+        await upgradeEnv()
+        await toggleOllama()
+      },
+      onNegativeClick: () => {
+        message.error('取消更新')
+      }
+    })
+  }else{
+    await upgradeEnv()
+  }
+}
+async function upgradeEnv() {
+
+  ollamaStore.appendLog('更新 ipex-llm...')
+  let out = null
+  let err = null
+  out = listen("run-pip-output", (ev) => ollamaStore.appendLog(ev.payload));
+  err = listen("run-pip-error", (ev) => ollamaStore.appendLog(ev.payload));
+  await invoke('install_deps')
+
+  out = listen("install-ollama-output", (ev) => ollamaStore.appendLog(ev.payload));
+  err = listen("install-ollama-error", (ev) => ollamaStore.appendLog(ev.payload));
+  await invoke('install_ollama')
+  ollamaStore.appendLog('更新 ipex-llm 完成')
+}
 async function toggleOllama() {
   isLoading.value = true
   ollamaStore.clearLogs();
@@ -61,7 +106,7 @@ async function toggleOllama() {
   } catch (error) {
     notification.warning({
       content: `Ollama操作失败: ${error}`,
-      duration:3000
+      duration: 3000
     })
     console.error('Ollama操作失败:', error)
   } finally {
@@ -77,7 +122,7 @@ async function checkStatus() {
     console.error('状态检查失败:', error)
     notification.warning({
       content: `状态检查失败: ${error}`,
-      duration:3000
+      duration: 3000
     })
   }
 }
@@ -88,7 +133,7 @@ async function openCmd() {
   } catch (error) {
     notification.warning({
       content: `打开CMD失败: ${error}`,
-      duration:3000
+      duration: 3000
     })
     console.error('打开CMD失败:', error)
   }
@@ -100,7 +145,7 @@ async function openPowerShell() {
   } catch (error) {
     notification.warning({
       content: `打开PowerShell失败: ${error}`,
-      duration:3000
+      duration: 3000
     })
     console.error('打开PowerShell失败:', error)
   }
@@ -110,8 +155,13 @@ onMounted(async () => {
   await checkStatus()
   statusCheckInterval = setInterval(checkStatus, 5000)
   const settings = await loadSettings()
-  if(ollamaStore.init){
+  console.log(ollamaStore.init);
+
+  if (ollamaStore.init) {
     return;
+  }
+  if (settings.autoUpdateOllama) {
+    await upgradeEnv()
   }
   if ((!settings) || settings.autoRunOllama) {
     if (!ollamaRunning.value) {

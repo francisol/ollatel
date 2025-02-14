@@ -86,7 +86,7 @@ async function startInitialization() {
 
     // 安装Ollama
     out=listen("install-ollama-output",(ev)=>appendLog(ev.payload) );
-      err=listen("install-ollama-error",(ev)=>appendLog(ev.payload) );
+    err=listen("install-ollama-error",(ev)=>appendLog(ev.payload) );
     currentStep.value = 4
     statusMessage.value = '正在安装Ollama...'
     await invoke('install_ollama')

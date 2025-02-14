@@ -15,6 +15,7 @@ export async function isInited() {
 export interface Settings{
     autoStart: boolean,
     autoRunOllama: boolean,
+    autoUpdateOllama:boolean,
 }
 
 export async function loadSettings() {
@@ -29,5 +30,9 @@ export async function saveSettings(setting:Settings) {
 
 export async function saveEnvVariables (env:any) {
     const store = await load('env.bin');
+    await ( store).set('env',env);
+}
+export async function saveCustomEnvVariables (env:any) {
+    const store = await load('custom_env.bin');
     await ( store).set('env',env);
 }
