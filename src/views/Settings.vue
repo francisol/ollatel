@@ -192,25 +192,15 @@
             </n-form-item>
           </n-card>
 
-          
+
           <!-- 用户自定义设置 -->
           <n-card title="用户自定义设置" embedded>
             <n-form-item>
               <template #label>
                 自定义环境变量
               </template>
-              <n-input
-      type="textarea"
-      placeholder="格式为KEY=VALUE,以换行分割，例如&#10K=v&#10K2=V2"
-    />            </n-form-item>
-            <n-form-item>
-              <template #label>
-                自定义启动时参数
-              </template>
-              <n-input
-      type="textarea"
-      placeholder="自定义启动时参数，使用换行分割例如:&#10set parameter num_ctx 4096&#10set ..."
-    /> 
+              <n-input type="textarea" v-model:value="settings.customEnv"
+                placeholder="格式为KEY=VALUE,以换行分割，例如&#10K=v&#10K2=V2" />
             </n-form-item>
           </n-card>
 
@@ -231,15 +221,21 @@
 
 <script setup>
 import { enable, isEnabled, disable } from '@tauri-apps/plugin-autostart';
-import { ref } from 'vue'
+import { ref,defineProps } from 'vue'
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from '@tauri-apps/api/event'
 import * as store from "../store";
-import { useNotification } from 'naive-ui'
+import { useNotification, useDialog } from 'naive-ui'
 import { open } from '@tauri-apps/plugin-dialog';
 const notification = useNotification();
+const dialog = useDialog()
+import { useOllamaStore } from "../stores/ollama";
+const ollamaStore=inject('ollamaStore')
+
+// const ollamaStore = useOllamaStore();
+
 const formRef = ref(null)
-const defSettings={
+const defSettings = {
   autoStart: false,
   autoRunOllama: true,
   autoUpdateOllama: false,
@@ -260,7 +256,8 @@ const defSettings={
   gpuOverhead: null,
   loadTimeout: '5',
   loadTimeoutUnit: 'm',
-  deviceSelector:''
+  deviceSelector: '',
+  customEnv: '',
 }
 const settings = ref(defSettings)
 
@@ -288,29 +285,57 @@ async function loadSettings() {
 }
 
 async function saveSettings() {
+  
   try {
     await formRef.value?.validate()
     await store.saveSettings(settings.value)
     await saveEvn();
-    notification.success({
-      content: `保存设置成功`,
-      duration:3000
-    })
+    await saveCustom();
+    if (ollamaStore.running) {
+      dialog.success({
+        title: "成功",
+        content: "保存成功是否重启Ollama",
+        positiveText: '重启',
+        negativeText: '稍后重启',
+        onPositiveClick: async () => {
+          try {
+            ollamaStore.stopOllama()
+            ollamaStore.runOllama()
+            notification.success({
+              content: `重启成功`,
+              duration: 3000
+            })
+          } catch (error) {
+            notification.error({
+              content: `重启失败：${error}`,
+              duration: 3000
+            })
+          }
+        }
+      })
+    } else {
+      notification.success({
+        content: `保存设置成功`,
+        duration: 3000
+      })
+    }
+
+
   } catch (error) {
     notification.warning({
       content: `保存设置失败: ${error}`,
-      duration:3000
+      duration: 3000
     })
     console.error('保存设置失败:', error)
   }
 
-  try{
+  try {
     if (settings.value.autoStart) {
       await enable();
     } else {
       await disable();
     }
-  }catch(e){}
+  } catch (e) { }
 }
 
 function resetSettings() {
@@ -367,7 +392,7 @@ onMounted(() => {
 
 async function saveEvn() {
   const envSettings = {
-    ONEAPI_DEVICE_SELECTOR: settings.value.deviceSelector|| '',
+    ONEAPI_DEVICE_SELECTOR: settings.value.deviceSelector || '',
     OLLAMA_DEBUG: settings.value.debug ? '1' : '0',
     OLLAMA_HOST: settings.value.host,
     OLLAMA_KEEP_ALIVE: settings.value.keepAlive ? `${settings.value.keepAlive}${settings.value.keepAliveUnit}` : '',
@@ -386,6 +411,22 @@ async function saveEvn() {
     OLLAMA_LOAD_TIMEOUT: settings.value.loadTimeout ? `${settings.value.loadTimeout}${settings.value.loadTimeoutUnit}` : ''
   }
   await store.saveEnvVariables(envSettings);
+}
+
+async function saveCustom() {
+  const env = {}
+  const arrays = (settings.value.customEnv || '').split('\n')
+
+  for (const item of arrays) {
+    const strs = item.split('=', 2)
+    if (strs.length != 2) {
+      continue
+    }
+    const key = strs[0].trim()
+    const value = strs[1].trim()
+    env[key] = value;
+  }
+  await store.saveCustomEnvVariables(env);
 }
 </script>
 

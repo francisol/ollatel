@@ -14,25 +14,24 @@ const router = createRouter({
     },
     {
       path: '/control',
-      component: () => import('./views/OllamaControl.vue')
+      component: () => import('./views/OllamaControl.vue'),
     },
     {
       path: '/settings',
-      component: () => import('./views/Settings.vue')
+      component: () => import('./views/Settings.vue'),
     }
   ]
 })
 
 router.beforeEach(async (to, _from, next) => {
+  
     if (to.path === '/init') {
       next()
       return
     }
   
     try {
-      const status = await isInited()
-      console.log(status);
-      
+      const status = await isInited()      
       if (!status && to.path !== '/init') {
         next('/init')
       } else {

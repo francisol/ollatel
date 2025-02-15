@@ -3,13 +3,13 @@
   <div class="control-container">
     <n-card title="Ollama 控制面板">
       <n-space vertical>
-        <n-alert :type="ollamaRunning ? 'success' : 'warning'">
-          Ollama 当前状态: {{ ollamaRunning ? '运行中' : '未运行' }}
+        <n-alert :type="ollamaStore.running ? 'success' : 'warning'">
+          Ollama 当前状态: {{ ollamaStore.running ? '运行中' : '未运行' }}
         </n-alert>
         <n-space>
 
-          <n-button :type="ollamaRunning ? 'error' : 'primary'" :loading="isLoading" @click="toggleOllama">
-            {{ ollamaRunning ? '停止 Ollama' : '启动 Ollama' }}
+          <n-button :type="ollamaStore.running ? 'error' : 'primary'" :loading="isLoading" @click="toggleOllama">
+            {{ ollamaStore.running ? '停止 Ollama' : '启动 Ollama' }}
           </n-button>
 
           <n-button type="info" @click="tryUpdate">
@@ -39,27 +39,28 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted,defineProps, inject } from 'vue'
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from '@tauri-apps/api/event'
 import { loadSettings } from '../store';
 import { useOllamaStore } from "../stores/ollama";
 import { useNotification, useDialog,useMessage  } from 'naive-ui'
+const ollamaStore=inject('ollamaStore')
+
+
+let statusCheckInterval
 const dialog = useDialog()
 const notification = useNotification();
-const ollamaStore = useOllamaStore();
-const ollamaRunning = ref(false)
+// const ollamaStore = useOllamaStore();
+// const ollamaRunning = ref(false)
 const isLoading = ref(false)
 const out = listen("run-ollama-output", (ev) => { ollamaStore.appendLog(ev.payload) });
 const err = listen("run-ollama-error", (ev) => ollamaStore.appendLog(ev.payload));
 const message = useMessage()
 
-async function stopOllama() {
-
-}
 
 async function tryUpdate() {
-  if (ollamaRunning.value) {
+  if (ollamaStore.running) {
     dialog.warning({
       title: '警告',
       content: '服务正在运行，升级时请关闭服务',
@@ -67,6 +68,7 @@ async function tryUpdate() {
       negativeText: '稍后升级',
       draggable: true,
       onPositiveClick: async () => {
+        dialog.destroyAll()
         await toggleOllama()
         await upgradeEnv()
         await toggleOllama()
@@ -97,12 +99,7 @@ async function toggleOllama() {
   isLoading.value = true
   ollamaStore.clearLogs();
   try {
-    if (ollamaRunning.value) {
-      await invoke('stop_ollama')
-    } else {
-      await invoke('run_ollama')
-    }
-    await checkStatus()
+    await ollamaStore.toggleOllama()
   } catch (error) {
     notification.warning({
       content: `Ollama操作失败: ${error}`,
@@ -116,8 +113,8 @@ async function toggleOllama() {
 
 async function checkStatus() {
   try {
-    const status = await invoke('is_ollama_running')
-    ollamaRunning.value = status
+    await ollamaStore.checkStatus()
+    // ollamaRunning.value = status
   } catch (error) {
     console.error('状态检查失败:', error)
     notification.warning({
@@ -155,7 +152,6 @@ onMounted(async () => {
   await checkStatus()
   statusCheckInterval = setInterval(checkStatus, 5000)
   const settings = await loadSettings()
-  console.log(ollamaStore.init);
 
   if (ollamaStore.init) {
     return;
@@ -164,7 +160,7 @@ onMounted(async () => {
     await upgradeEnv()
   }
   if ((!settings) || settings.autoRunOllama) {
-    if (!ollamaRunning.value) {
+    if (!ollamaStore.running) {
       await toggleOllama()
     }
   }

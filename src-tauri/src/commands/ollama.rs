@@ -13,6 +13,24 @@ use tauri_plugin_store::StoreExt;
 use super::{new_command, run_cmd, run_command};
 pub struct ProcessHandle(pub Mutex<Option<Child>>);
 
+macro_rules! insert_envs {
+    ($store:expr, $envs:expr) => {
+        let custom_envs = $store.get("env");
+        match custom_envs {
+            Some(serde_json::Value::Object(val)) => {
+                for (key, value) in val.iter() {
+                    if let serde_json::Value::String(v) = value {
+                        if !v.is_empty() {
+                            $envs.insert(key.to_string(), v.to_string());
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    };
+}
+
 #[tauri::command]
 pub fn install_ollama<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
     // init-ollama.bat
@@ -124,23 +142,9 @@ pub fn run_ollama<R: tauri::Runtime>(
     );
     envs.insert("GIN_MODE".into(), "release".into());
     let store = app.store("env.bin").map_err(|e| e.to_string())?;
-
-    let custom_envs = store.get("env");
-    match custom_envs {
-        Some(Value::Object(val)) => {
-            for (key, value) in val.iter() {
-                match value {
-                    Value::String(v) => {
-                        if !v.is_empty() {
-                            envs.insert(key.to_string(), v.to_string());
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-        _ => {}
-    }
+    let custom_store = app.store("custom_data.bin").map_err(|e| e.to_string())?;
+    insert_envs!(store,envs);
+    insert_envs!(custom_store,envs);
     let cmd = run_cmd(&app, "ollama", ["serve"], ollama_dir, "run-ollama", envs)?;
     *handle = Some(cmd);
     Ok(())

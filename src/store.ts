@@ -33,6 +33,6 @@ export async function saveEnvVariables (env:any) {
     await ( store).set('env',env);
 }
 export async function saveCustomEnvVariables (env:any) {
-    const store = await load('custom_env.bin');
+    const store = await load('custom_data.bin');
     await ( store).set('env',env);
 }
